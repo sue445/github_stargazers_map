@@ -5,6 +5,8 @@ require "uri"
 
 Bundler.require
 
+require_relative "ruby_kml_ext"
+
 Dotenv.load
 
 # starを取得するリポジトリ（user/repo）
@@ -31,6 +33,7 @@ def get_repo_stargazers(repo_name)
     users << {
       user_name: stargazer.login,
       location: user.location,
+      avatar_url: user.avatar_url,
     }
   end
   users
@@ -76,6 +79,12 @@ def write_kml(title, users, filename)
     folder.features << KML::Placemark.new(
       name:     user[:user_name],
       description: user[:location],
+      style: KML::Style.new(
+        id: "style_#{user[:user_name]}",
+        icon_style: KML::IconStyle.new(
+          icon: KML::Icon.new(href: user[:avatar_url])
+        )
+      ),
       geometry: KML::Point.new(coordinates: {lat: user[:lat], lng: user[:lng]}),
     )
   end
