@@ -25,17 +25,16 @@ def get_repo_stargazers(repo_name)
   puts "Fetch stargazers"
   stargazers = client.stargazers(repo_name)
 
-  users = []
-  stargazers.each_with_index do |stargazer, i|
+  Parallel.map_with_index(stargazers) do |stargazer, i|
     puts "Fetch user (#{i+1}/#{stargazers.count}): #{stargazer.login}"
     user = client.user(stargazer.login)
-    users << {
+
+    {
       user_name: stargazer.login,
       location: user.location,
       avatar_url: user.avatar_url,
     }
   end
-  users
 end
 
 # 住所から緯度経度を取得する
