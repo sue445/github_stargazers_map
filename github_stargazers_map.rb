@@ -5,8 +5,6 @@ require "uri"
 
 Bundler.require
 
-require_relative "ruby_kml_ext"
-
 Dotenv.load
 
 # starを取得するリポジトリ（user/repo）
