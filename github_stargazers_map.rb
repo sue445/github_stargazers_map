@@ -7,14 +7,15 @@ Bundler.require
 
 Dotenv.load
 
+MAX_RETRY_COUNT = 5
+
 # starを取得するリポジトリ（user/repo）
 REPO_NAME = ARGV[0]
 
 raise "require GITHUB_API_TOKEN" unless ENV["GITHUB_API_TOKEN"]
 raise "require REPONAME" unless REPO_NAME
 
-class GeocordingError < StandardError
-end
+class RetryableError < StandardError; end
 
 # リポジトリにstarをつけた人の一覧を取得する
 def get_repo_stargazers(repo_name)
@@ -39,15 +40,30 @@ end
 
 # 住所から緯度経度を取得する
 def fetch_latlng(address)
-  json = open("http://maps.googleapis.com/maps/api/geocode/json?address=#{URI.encode(address)}&sensor=false").read
-  hash = JSON.parse(json)
+  retry_count = 0
+  begin
+    json = open("http://maps.googleapis.com/maps/api/geocode/json?address=#{URI.encode(address)}&sensor=false").read
+    hash = JSON.parse(json)
 
-  raise GeocordingError, "status is #{hash["status"]}: #{address}" unless hash["status"] == "OK"
+    case hash["status"]
+    when "OK"
+      {
+        lat: hash["results"][0]["geometry"]["location"]["lat"],
+        lng: hash["results"][0]["geometry"]["location"]["lng"],
+      }
+    when "OVER_QUERY_LIMIT"
+      raise RetryableError
+    else
+      raise "status is #{hash["status"]}: #{address}"
+    end
+  rescue RetryableError
+    retry_count += 1
+    raise "Retry over" if retry_count > MAX_RETRY_COUNT
 
-  {
-    lat: hash["results"][0]["geometry"]["location"]["lat"],
-    lng: hash["results"][0]["geometry"]["location"]["lng"],
-  }
+    # NOTE: スリープしないとRateLimit超えてエラーになる
+    sleep 1
+    retry
+  end
 end
 
 # locationから全員分の緯度経度を取得する
@@ -56,16 +72,9 @@ def fetch_user_locations(users)
     puts "Fetch latlng (#{i+1}/#{users.count}): #{user[:user_name]}"
     next if user[:location].blank?
 
-    begin
-      latlng = fetch_latlng(user[:location])
-      user[:lat] = latlng[:lat]
-      user[:lng] = latlng[:lng]
-
-      # NOTE: スリープしないとRateLimit超えてエラーになる
-      sleep 1
-    rescue GeocordingError => e
-      puts e.message
-    end
+    latlng = fetch_latlng(user[:location])
+    user[:lat] = latlng[:lat]
+    user[:lng] = latlng[:lng]
   end
 end
 
