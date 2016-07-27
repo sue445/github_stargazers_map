@@ -12,3 +12,8 @@ bundle exec ruby github_stargazers_map.rb <user_name>/<repo_name>
 ```
 
 `dist/` にKMLファイルが作られるのでGoogleマイマップにインポートする
+
+# Example
+https://github.com/sue445/jenkins-backup-script のstargazers map
+
+https://drive.google.com/open?id=148eq4ySxjY5IQO_e29MkjMulfoI
